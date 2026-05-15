@@ -3,6 +3,8 @@ import java.time.LocalDate;
 import java.util.Scanner;
 import java.io.File;
 import java.io.IOException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 
 public class App {
@@ -21,6 +23,9 @@ public class App {
 
     /** Pilha de pedidos */
     static Pilha<Pedido> pilhaPedidos = new Pilha<>();
+    
+    /** Pilha de produtos mais recentemente pedidos */
+    static Pilha<Produto> pilhaProdutosMaisRecentes = new Pilha<>();
         
     static void limparTela() {
         System.out.print("\033[H\033[2J");
@@ -203,17 +208,101 @@ public class App {
     }
     
     /**
-     * Finaliza um pedido, momento no qual ele deve ser armazenado em uma pilha de pedidos.
+     * Finaliza um pedido, momento no qual ele deve ser armazenado em uma pilha de pedidos
+     * e seus produtos adicionados à pilha de produtos mais recentemente pedidos.
      * @param pedido O pedido que deve ser finalizado.
      */
     public static void finalizarPedido(Pedido pedido) {
     	
-    	// TODO
+    	cabecalho();
+    	
+    	if (pedido == null) {
+    		System.out.println("Erro: Nenhum pedido iniciado!");
+    		return;
+    	}
+    	
+    	pilhaPedidos.empilhar(pedido);
+    	
+    	// Adicionar os produtos do pedido à pilha de produtos mais recentes
+    	Produto[] produtos = pedido.getProdutos();
+    	int quantProdutos = pedido.getQuantosProdutos();
+    	
+    	for (int i = 0; i < quantProdutos; i++) {
+    		if (produtos[i] != null) {
+    			pilhaProdutosMaisRecentes.empilhar(produtos[i]);
+    		}
+    	}
+    	
+    	System.out.println("Pedido finalizado e armazenado com sucesso!");
+    	System.out.println("Produtos adicionados à pilha de produtos mais recentes.");
+    	System.out.println(pedido.toString());
     }
     
     public static void listarProdutosPedidosRecentes() {
     	
-    	// TODO
+    	cabecalho();
+    	
+    	if (pilhaProdutosMaisRecentes.vazia()) {
+    		System.out.println("Nenhum produto foi pedido ainda!");
+    		return;
+    	}
+    	
+    	System.out.println("Produtos mais recentemente pedidos (do mais recente para o mais antigo):");
+    	System.out.println("=====================================================================");
+    	
+    	// Usar uma pilha auxiliar para desempilhar temporariamente
+    	Pilha<Produto> pilhaAuxiliar = new Pilha<>();
+    	
+    	// Desempilhar e imprimir
+    	while (!pilhaProdutosMaisRecentes.vazia()) {
+    		Produto produto = pilhaProdutosMaisRecentes.desempilhar();
+    		System.out.println("  " + produto.toString());
+    		pilhaAuxiliar.empilhar(produto);
+    	}
+    	
+    	// Restaurar a pilha original
+    	while (!pilhaAuxiliar.vazia()) {
+    		pilhaProdutosMaisRecentes.empilhar(pilhaAuxiliar.desempilhar());
+    	}
+    }
+    
+    /**
+     * Salva todos os pedidos finalizados em um arquivo de texto.
+     * Cada pedido é salvo em uma linha com a data e o valor final.
+     */
+    public static void salvarPedidosEmArquivo() {
+    	
+    	String nomeArquivoPedidos = "pedidos.txt";
+    	PrintWriter escritor = null;
+    	
+    	try {
+    		escritor = new PrintWriter(new FileWriter(nomeArquivoPedidos));
+    		
+    		// Usar uma pilha auxiliar para acessar os pedidos sem destruir a pilha original
+    		Pilha<Pedido> pilhaAuxiliar = new Pilha<>();
+    		
+    		// Desempilhar e salvar
+    		while (!pilhaPedidos.vazia()) {
+    			Pedido pedido = pilhaPedidos.desempilhar();
+    			escritor.println(pedido.toString());
+    			escritor.println("---"); // Separador entre pedidos
+    			pilhaAuxiliar.empilhar(pedido);
+    		}
+    		
+    		// Restaurar a pilha original
+    		while (!pilhaAuxiliar.vazia()) {
+    			pilhaPedidos.empilhar(pilhaAuxiliar.desempilhar());
+    		}
+    		
+    		System.out.println("Pedidos salvos com sucesso no arquivo: " + nomeArquivoPedidos);
+    		
+    	} catch (IOException e) {
+    		System.out.println("Erro ao salvar pedidos em arquivo: " + e.getMessage());
+    	} finally {
+    		if (escritor != null) {
+    			escritor.close();
+    		}
+    	}
     }
     
 	public static void main(String[] args) {
@@ -238,7 +327,12 @@ public class App {
                 case 6 -> listarProdutosPedidosRecentes();
             }
             pausa();
-        }while(opcao != 0);       
+        }while(opcao != 0);
+        
+        // Salvar pedidos em arquivo antes de encerrar
+        if (!pilhaPedidos.vazia()) {
+        	salvarPedidosEmArquivo();
+        }
 
         teclado.close();    
     }
