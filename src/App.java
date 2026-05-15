@@ -21,8 +21,8 @@ public class App {
     /** Quantidade de produtos cadastrados atualmente no vetor */
     static int quantosProdutos = 0;
 
-    /** Pilha de pedidos */
-    static Pilha<Pedido> pilhaPedidos = new Pilha<>();
+    /** Fila de pedidos aguardando processamento */
+    static Fila<Pedido> filaPedidos = new Fila<>();
     
     /** Pilha de produtos mais recentemente pedidos */
     static Pilha<Produto> pilhaProdutosMaisRecentes = new Pilha<>();
@@ -69,6 +69,7 @@ public class App {
         System.out.println("4 - Iniciar novo pedido");
         System.out.println("5 - Fechar pedido");
         System.out.println("6 - Listar produtos dos pedidos mais recentes");
+        System.out.println("7 - Listar pedidos na fila de processamento");
         System.out.println("0 - Sair");
         System.out.print("Digite sua opção: ");
         return Integer.parseInt(teclado.nextLine());
@@ -208,20 +209,21 @@ public class App {
     }
     
     /**
-     * Finaliza um pedido, momento no qual ele deve ser armazenado em uma pilha de pedidos
+     * Finaliza um pedido, momento no qual ele deve ser enfileirado na fila de pedidos
      * e seus produtos adicionados à pilha de produtos mais recentemente pedidos.
      * @param pedido O pedido que deve ser finalizado.
+     * @return true se o pedido foi finalizado com sucesso, false caso contrário
      */
-    public static void finalizarPedido(Pedido pedido) {
+    public static boolean finalizarPedido(Pedido pedido) {
     	
     	cabecalho();
     	
     	if (pedido == null) {
     		System.out.println("Erro: Nenhum pedido iniciado!");
-    		return;
+    		return false;
     	}
     	
-    	pilhaPedidos.empilhar(pedido);
+    	filaPedidos.enfileirar(pedido);
     	
     	// Adicionar os produtos do pedido à pilha de produtos mais recentes
     	Produto[] produtos = pedido.getProdutos();
@@ -233,9 +235,10 @@ public class App {
     		}
     	}
     	
-    	System.out.println("Pedido finalizado e armazenado com sucesso!");
-    	System.out.println("Produtos adicionados à pilha de produtos mais recentes.");
+    	System.out.println("Pedido finalizado e enfileirado com sucesso!");
+    	System.out.println("Aguardando processamento na fila...");
     	System.out.println(pedido.toString());
+    	return true;
     }
     
     public static void listarProdutosPedidosRecentes() {
@@ -267,6 +270,40 @@ public class App {
     }
     
     /**
+     * Lista todos os pedidos na fila de processamento, do primeiro ao último.
+     */
+    public static void listarPedidosNaFila() {
+    	
+    	cabecalho();
+    	
+    	if (filaPedidos.vazia()) {
+    		System.out.println("Nenhum pedido na fila de processamento no momento!");
+    		return;
+    	}
+    	
+    	System.out.println("Pedidos na fila de processamento (ordem FIFO):");
+    	System.out.println("===============================================");
+    	
+    	// Usar uma fila auxiliar para listar os pedidos sem destruir a fila original
+    	Fila<Pedido> filaAuxiliar = new Fila<>();
+    	int numeroPedido = 1;
+    	
+    	// Desenfileirar e imprimir
+    	while (!filaPedidos.vazia()) {
+    		Pedido pedido = filaPedidos.desenfileirar();
+    		System.out.println("\nPedido #" + numeroPedido + ":");
+    		System.out.println(pedido.toString());
+    		filaAuxiliar.enfileirar(pedido);
+    		numeroPedido++;
+    	}
+    	
+    	// Restaurar a fila original
+    	while (!filaAuxiliar.vazia()) {
+    		filaPedidos.enfileirar(filaAuxiliar.desenfileirar());
+    	}
+    }
+    
+    /**
      * Salva todos os pedidos finalizados em um arquivo de texto.
      * Cada pedido é salvo em uma linha com a data e o valor final.
      */
@@ -278,20 +315,20 @@ public class App {
     	try {
     		escritor = new PrintWriter(new FileWriter(nomeArquivoPedidos));
     		
-    		// Usar uma pilha auxiliar para acessar os pedidos sem destruir a pilha original
-    		Pilha<Pedido> pilhaAuxiliar = new Pilha<>();
+    		// Usar uma fila auxiliar para acessar os pedidos sem destruir a fila original
+    		Fila<Pedido> filaAuxiliar = new Fila<>();
     		
-    		// Desempilhar e salvar
-    		while (!pilhaPedidos.vazia()) {
-    			Pedido pedido = pilhaPedidos.desempilhar();
+    		// Desenfileirar e salvar
+    		while (!filaPedidos.vazia()) {
+    			Pedido pedido = filaPedidos.desenfileirar();
     			escritor.println(pedido.toString());
     			escritor.println("---"); // Separador entre pedidos
-    			pilhaAuxiliar.empilhar(pedido);
+    			filaAuxiliar.enfileirar(pedido);
     		}
     		
-    		// Restaurar a pilha original
-    		while (!pilhaAuxiliar.vazia()) {
-    			pilhaPedidos.empilhar(pilhaAuxiliar.desempilhar());
+    		// Restaurar a fila original
+    		while (!filaAuxiliar.vazia()) {
+    			filaPedidos.enfileirar(filaAuxiliar.desenfileirar());
     		}
     		
     		System.out.println("Pedidos salvos com sucesso no arquivo: " + nomeArquivoPedidos);
@@ -304,13 +341,122 @@ public class App {
     		}
     	}
     }
+
+    /**
+     * Testa a implementação da Fila<Character> com os caracteres do nome do usuário.
+     * Testa os métodos: enfileirar, desenfileirar e contar.
+     */
+    public static void testarFilaDeCaracteres() {
+        
+        System.out.println("==============================");
+        System.out.println("TESTE DA FILA<CHARACTER>");
+        System.out.println("==============================\n");
+        
+        // Criar a fila de caracteres
+        Fila<Character> filaCaracteres = new Fila<>();
+        
+        // Nome do usuário
+        String primeiroNome = "Samuel";
+        String segundoNome = "Pinheiro";
+        String nomeCompleto = primeiroNome + segundoNome;
+        
+        System.out.println("Enfileirando caracteres do nome: " + primeiroNome + " " + segundoNome);
+        System.out.println("\nCaracteres a enfileirar: " + nomeCompleto);
+        System.out.println();
+        
+        // Enfileirar os caracteres do nome
+        for (char c : nomeCompleto.toCharArray()) {
+            filaCaracteres.enfileirar(c);
+            System.out.println("  Enfileirado: '" + c + "'");
+        }
+        
+        System.out.println("\n--- Fila após enfileiramento ---");
+        System.out.println(filaCaracteres);
+        
+        // Testar consultarPrimeiro
+        System.out.println("Primeiro elemento da fila: '" + filaCaracteres.consultarPrimeiro() + "'\n");
+        
+        // Testar contagem de caracteres
+        System.out.println("--- Teste de Contagem de Caracteres ---");
+        char[] caracteresUnicos = {'S', 'a', 'e', 'i'};
+        for (char c : caracteresUnicos) {
+            int contador = filaCaracteres.contar(c);
+            System.out.println("  Ocorrências de '" + c + "': " + contador);
+        }
+        
+        // Testar desenfileiramento
+        System.out.println("\n--- Teste de Desenfileiramento ---");
+        System.out.println("Desenfileirando 5 elementos:");
+        for (int i = 0; i < 5 && !filaCaracteres.vazia(); i++) {
+            char desenfileirado = filaCaracteres.desenfileirar();
+            System.out.println("  Desenfileirado: '" + desenfileirado + "'");
+        }
+        
+        System.out.println("\n--- Fila após desenfileiramento de 5 elementos ---");
+        System.out.println(filaCaracteres);
+        
+        // Testar contagem novamente após desenfileiramento
+        System.out.println("--- Recontagem após desenfileiramento ---");
+        int contador_a = filaCaracteres.contar('a');
+        int contador_e = filaCaracteres.contar('e');
+        System.out.println("  Ocorrências de 'a': " + contador_a);
+        System.out.println("  Ocorrências de 'e': " + contador_e);
+        
+        System.out.println("\n==============================\n");
+    }
+
+    /**
+     * Testa a implementação da Fila<Pedido> com múltiplos pedidos.
+     * Demonstra enfileiramento, consulta e preservação de pedidos.
+     */
+    public static void testarFilaDePedidos() {
+        
+        System.out.println("==============================");
+        System.out.println("TESTE DA FILA<PEDIDO>");
+        System.out.println("==============================\n");
+        
+        // Criar alguns pedidos de teste
+        System.out.println("Criando e enfileirando 3 pedidos de teste...\n");
+        
+        for (int i = 1; i <= 3; i++) {
+            Pedido pedidoTeste = new Pedido(LocalDate.now(), 1);
+            
+            // Adicionar alguns produtos do vetor de produtos ao pedido
+            if (produtosCadastrados != null && quantosProdutos > 0) {
+                int indice1 = (i - 1) % quantosProdutos;
+                int indice2 = (i % quantosProdutos);
+                
+                pedidoTeste.incluirProduto(produtosCadastrados[indice1]);
+                pedidoTeste.incluirProduto(produtosCadastrados[indice2]);
+            }
+            
+            filaPedidos.enfileirar(pedidoTeste);
+            System.out.println("✓ Pedido #" + i + " enfileirado");
+        }
+        
+        System.out.println("\n--- Fila de Pedidos Criada ---\n");
+        
+        // Listar os pedidos na fila
+        listarPedidosNaFila();
+        
+        System.out.println("Total de " + filaPedidos.contar(filaPedidos.consultarPrimeiro()) 
+                         + " pedidos na fila (teste de contagem).\n");
+        
+        System.out.println("==============================\n");
+    }
     
 	public static void main(String[] args) {
 		
 		teclado = new Scanner(System.in, Charset.forName("UTF-8"));
         
+        // Executar testes da Fila<Character>
+        testarFilaDeCaracteres();
+        
 		nomeArquivoDados = "produtos.txt";
         produtosCadastrados = lerProdutos(nomeArquivoDados);
+        
+        // Executar testes da Fila<Pedido>
+        testarFilaDePedidos();
         
         Pedido pedido = null;
         
@@ -323,14 +469,19 @@ public class App {
                 case 2 -> mostrarProduto(localizarProduto());
                 case 3 -> mostrarProduto(localizarProdutoDescricao());
                 case 4 -> pedido = iniciarPedido();
-                case 5 -> finalizarPedido(pedido);
+                case 5 -> {
+                    if (finalizarPedido(pedido)) {
+                        pedido = null; // Resetar para permitir novo pedido
+                    }
+                }
                 case 6 -> listarProdutosPedidosRecentes();
+                case 7 -> listarPedidosNaFila();
             }
             pausa();
         }while(opcao != 0);
         
         // Salvar pedidos em arquivo antes de encerrar
-        if (!pilhaPedidos.vazia()) {
+        if (!filaPedidos.vazia()) {
         	salvarPedidosEmArquivo();
         }
 
